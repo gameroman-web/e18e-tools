@@ -49,6 +49,7 @@ const description = "e18e tools";
         <button
           id="searchBtn"
           class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+          type="button"
         >
           <span>Analyze</span>
           <svg
@@ -57,6 +58,7 @@ const description = "e18e tools";
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
+            aria-hidden="true"
           >
             <path
               stroke-linecap="round"
@@ -69,6 +71,7 @@ const description = "e18e tools";
             id="loadingIcon"
             class="hidden animate-spin h-4 w-4 text-white"
             viewBox="0 0 24 24"
+            aria-hidden="true"
           >
             <circle
               class="opacity-25"
@@ -139,12 +142,14 @@ const description = "e18e tools";
         <button
           id="copyMarkdownBtn"
           class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold py-1.5 px-3 rounded border border-slate-300 dark:border-slate-600 transition-colors flex items-center gap-1.5"
+          type="button"
         >
           <svg
             class="w-3.5 h-3.5"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
+            aria-hidden="true"
           >
             <path
               stroke-linecap="round"
@@ -188,6 +193,7 @@ const description = "e18e tools";
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
+        aria-hidden="true"
       >
         <path
           stroke-linecap="round"
@@ -300,7 +306,7 @@ async function cachedFetch(url, options = {}) {
         console.error(err);
         Object.keys(localStorage)
           .filter((k) => k.startsWith("fetch:"))
-          .forEach((k) => localStorage.removeItem(k));
+          .forEach((k) => void localStorage.removeItem(k));
       }
     },
   };
@@ -398,7 +404,7 @@ async function getBasePackageSize(name) {
 }
 
 async function fetchAllStats(names) {
-  let combinedStats = {};
+  const combinedStats = {};
 
   updateProgress(40, `Fetching stats for ${names.length} packages...`);
 
@@ -411,7 +417,9 @@ async function fetchAllStats(names) {
     },
   );
 
-  data.rows.forEach((r) => (combinedStats[r.key] = r.value));
+  data.rows.forEach((r) => {
+    combinedStats[r.key] = r.value;
+  });
 
   updateProgress(90, "Stats fetch complete.");
   return combinedStats;
@@ -457,7 +465,7 @@ async function startAnalysis() {
   try {
     const [pkgName, requestedRange] = getPackageNameAndVersion(pkgInput);
     const isDev = elements.devCheckbox.checked;
-    const limit = parseInt(elements.limitInput.value) || 200;
+    const limit = parseInt(elements.limitInput.value, 10) || 200;
 
     updateUrlParams({ pkg: pkgInput, isDev, limit: limit.toString() });
     updateProgress(20, "Fetching package metadata...");
