@@ -15,7 +15,7 @@ function formatDownloads(downloads: number) {
 }
 
 const reg = /[|`\\_]/g;
-function escapeMdTable(str: string, ...values: string[]) {
+function escapeMdTable(str: TemplateStringsArray, ...values: string[]) {
   return String.raw({ raw: str }, ...values.map((v) => v.replace(reg, "\\$&")));
 }
 
