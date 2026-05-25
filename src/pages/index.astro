@@ -238,12 +238,13 @@ const description = "e18e tools";
 }
 </style>
 
-<script type="module">
-import semver from "https://esm.sh/semver@7.7.4";
-
-const npmRegistryBaseUrl = "https://registry.npmmirror.com";
-const registryUrl = "https://npm.devminer.xyz/registry";
-const liveRegistryUrl = "https://npm.devminer.xyz/live_registry";
+<script>
+import semver from "semver";
+import {
+  liveRegistryUrl,
+  npmRegistryBaseUrl,
+  registryUrl,
+} from "#lib/constants";
 
 // Global State
 let isLoading = false;
@@ -271,14 +272,14 @@ const elements = {
   copyBuffer: document.getElementById("copyBuffer"),
 };
 
-const hash = (str) => {
+const hash = (str: string) => {
   let h = 5381;
   let i = str.length;
   while (i) h = (h * 33) ^ str.charCodeAt(--i);
   return (h >>> 0).toString(36);
 };
 
-async function cachedFetch(url, options = {}) {
+async function cachedFetch(url: string, options = {}) {
   const hashKey = `fetch:${hash(url + (options.body || ""))}`;
   const cached = localStorage.getItem(hashKey);
 
@@ -425,7 +426,7 @@ async function fetchAllStats(names) {
   return combinedStats;
 }
 
-async function getSortedDependents(packageName, isDev) {
+async function getSortedDependents(packageName: string, isDev?: boolean) {
   const view = isDev ? "dev-dependencies" : "dependents2";
   const url = `${liveRegistryUrl}/_design/dependents/_view/${view}?key="${packageName}"`;
 
