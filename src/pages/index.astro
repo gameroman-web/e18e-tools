@@ -241,18 +241,19 @@ const description = "e18e tools";
 <script>
 import semver from "semver";
 import { getBasePackageSize, getSortedDependents } from "#lib/api";
-import { elements, setLoading, showError, updateProgress } from "#lib/ui";
-import { escapeMdTable, formatDownloads, formatTraffic } from "#lib/util";
-
-interface CurrentResult {
-  name: string;
-  version: string;
-  downloads: number;
-  traffic: number;
-}
+import type { AnalysisResult } from "#lib/ui";
+import {
+  copyMarkdown,
+  displayResults,
+  elements,
+  setLoading,
+  showError,
+  updateProgress,
+} from "#lib/ui";
+import { getPackageNameAndVersion } from "#lib/util";
 
 // Global State
-let currentResults: CurrentResult[] = [];
+let currentResults: AnalysisResult[] = [];
 
 function updateUrlParams({
   pkg,
@@ -306,26 +307,6 @@ function loadParamsFromUrl() {
     startAnalysis();
   }
 }
-
-function getPackageNameAndVersion(input: string) {
-  const scoped = input.startsWith("@");
-  let [packageName, version] = input.split("@");
-  if (scoped) {
-    const atPos = input.lastIndexOf("@");
-    if (atPos === 0) {
-      packageName = input;
-      version = undefined;
-    } else {
-      packageName = input.slice(0, atPos);
-      version = input.slice(atPos + 1);
-    }
-  }
-  return [packageName, version] as [
-    packageName: string,
-    version: string | undefined,
-  ];
-}
-
 // --- Core Logic ---
 async function startAnalysis() {
   const pkgInput = elements.pkgInput.value.trim();
@@ -368,83 +349,6 @@ async function startAnalysis() {
   }
 }
 
-function displayResults(data: CurrentResult[], isDev?: boolean) {
-  elements.resultsTableBody.innerHTML = "";
-
-  elements.trafficHeader.classList.toggle("hidden", isDev);
-  elements.versionHeader.classList.toggle("hidden", isDev);
-
-  elements.resultsArea.classList.remove("hidden");
-  elements.emptyState.classList.add("hidden");
-
-  elements.totalStats.textContent = `Showing ${data.length} packages`;
-
-  data.forEach((pkg, i) => {
-    const row = document.createElement("tr");
-    row.className = "hover:bg-slate-50 transition-colors";
-
-    const trafficCell = isDev
-      ? ""
-      : `<td class="px-6 py-4 font-mono text-slate-500">${formatTraffic(pkg.traffic)}</td>`;
-    const versionCell = isDev
-      ? ""
-      : `<td class="px-6 py-4"><span class="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs">${pkg.version || "any"}</span></td>`;
-
-    row.innerHTML = `
-      <td class="px-6 py-4 text-slate-400 font-medium">${i + 1}</td>
-      <td class="px-6 py-4 font-bold text-slate-700">${formatDownloads(pkg.downloads)}</td>
-      ${trafficCell}
-      ${versionCell}
-      <td class="px-6 py-4">
-        <a href="https://npmx.dev/${pkg.name}" target="_blank" class="text-blue-600 hover:underline font-medium">
-          ${pkg.name}
-        </a>
-      </td>
-    `;
-    elements.resultsTableBody.appendChild(row);
-  });
-}
-
-function copyMarkdown() {
-  if (!currentResults.length) return;
-
-  const isDev = elements.devCheckbox.checked;
-  let md = "";
-
-  if (!isDev) {
-    md += `| # | Downloads/month | Traffic | Version | Package |\n`;
-    md += `|---|-----------------|---------|---------|---------|\n`;
-  } else {
-    md += `| # | Downloads/month | Package |\n`;
-    md += `|---|-----------------|---------|\n`;
-  }
-
-  currentResults.forEach((pkg, i) => {
-    const indexStr = `${i + 1}`;
-    const downloadsStr = formatDownloads(pkg.downloads);
-    const trafficStr = formatTraffic(pkg.traffic);
-    const versionStr = pkg.version || "any";
-    const pkgLink = `[${pkg.name}](https://npmx.dev/${pkg.name})`;
-
-    if (!isDev) {
-      md += escapeMdTable`| ${indexStr} | ${downloadsStr} | ${trafficStr} | ${versionStr} | ${pkgLink} |\n`;
-    } else {
-      md += escapeMdTable`| ${indexStr} | ${downloadsStr} | ${pkgLink} |\n`;
-    }
-  });
-
-  elements.copyBuffer.value = md;
-  elements.copyBuffer.select();
-  document.execCommand("copy");
-
-  const btn = elements.copyMarkdownBtn;
-  const originalText = btn.innerHTML;
-  btn.innerHTML = "<span>Copied!</span>";
-  setTimeout(() => {
-    btn.innerHTML = originalText;
-  }, 2000);
-}
-
 // --- Event Listeners ---
 elements.searchBtn.addEventListener("click", startAnalysis);
 elements.pkgInput.addEventListener("keypress", (e) => {
@@ -456,7 +360,9 @@ elements.limitInput.addEventListener("keypress", (e) => {
 elements.devCheckbox.addEventListener("change", () => {
   updateUrlParams({ isDev: elements.devCheckbox.checked });
 });
-elements.copyMarkdownBtn.addEventListener("click", copyMarkdown);
+elements.copyMarkdownBtn.addEventListener("click", () =>
+  copyMarkdown(currentResults),
+);
 
 window.addEventListener("popstate", loadParamsFromUrl);
 window.addEventListener("DOMContentLoaded", loadParamsFromUrl);

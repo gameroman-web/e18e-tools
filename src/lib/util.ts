@@ -26,4 +26,29 @@ const hash = (str: string) => {
   return (h >>> 0).toString(36);
 };
 
-export { escapeMdTable, formatDownloads, formatTraffic, hash };
+function getPackageNameAndVersion(input: string) {
+  const scoped = input.startsWith("@");
+  let [packageName, version] = input.split("@");
+  if (scoped) {
+    const atPos = input.lastIndexOf("@");
+    if (atPos === 0) {
+      packageName = input;
+      version = undefined;
+    } else {
+      packageName = input.slice(0, atPos);
+      version = input.slice(atPos + 1);
+    }
+  }
+  return [packageName, version] as [
+    packageName: string,
+    version: string | undefined,
+  ];
+}
+
+export {
+  escapeMdTable,
+  formatDownloads,
+  formatTraffic,
+  getPackageNameAndVersion,
+  hash,
+};
