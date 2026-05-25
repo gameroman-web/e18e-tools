@@ -245,9 +245,9 @@ import {
   npmRegistryBaseUrl,
   registryUrl,
 } from "#lib/constants";
+import { escapeMdTable, formatDownloads, formatTraffic, hash } from "#lib/util";
 
 // Global State
-let isLoading = false;
 let currentResults = [];
 
 const elements = {
@@ -272,31 +272,24 @@ const elements = {
   copyBuffer: document.getElementById("copyBuffer"),
 };
 
-const hash = (str: string) => {
-  let h = 5381;
-  let i = str.length;
-  while (i) h = (h * 33) ^ str.charCodeAt(--i);
-  return (h >>> 0).toString(36);
-};
-
-async function cachedFetch(url: string, options = {}) {
+async function cachedFetch<T>(url: string, options: RequestInit = {}) {
   const hashKey = `fetch:${hash(url + (options.body || ""))}`;
   const cached = localStorage.getItem(hashKey);
 
   if (cached) {
-    const { data, expiry } = JSON.parse(cached);
-    if (Date.now() < expiry) return { data, isCached: true };
+    const { data, expiry }: { data: T; expiry: number } = JSON.parse(cached);
+    if (Date.now() < expiry) return { data, isCached: true as const };
     localStorage.removeItem(hashKey);
   }
 
   const response = await fetch(url, options);
   if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
-  const rawData = await response.json();
+  const rawData: T = await response.json();
 
   return {
     data: rawData,
-    isCached: false,
-    commit(processedData, ttlMinutes = 10) {
+    isCached: false as const,
+    commit(processedData: T, ttlMinutes = 10) {
       try {
         const entry = {
           data: processedData,
@@ -358,28 +351,7 @@ function loadParamsFromUrl() {
   }
 }
 
-const reg = /[|`\\_]/g;
-function escapeMdTable(str, ...values) {
-  return String.raw({ raw: str }, ...values.map((v) => v.replace(reg, "\\$&")));
-}
-
-function formatDownloads(downloads) {
-  if (downloads >= 1e9) return `${(downloads / 1e9).toFixed(2)}B`;
-  if (downloads >= 1e6) return `${(downloads / 1e6).toFixed(2)}M`;
-  if (downloads >= 1e3) return `${(downloads / 1e3).toFixed(2)}k`;
-  return downloads.toString();
-}
-
-function formatTraffic(bytes) {
-  if (bytes >= 1e15) return `${(bytes / 1e15).toFixed(2)} PB`;
-  if (bytes >= 1e12) return `${(bytes / 1e12).toFixed(2)} TB`;
-  if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(2)} GB`;
-  if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(2)} MB`;
-  if (bytes >= 1e3) return `${(bytes / 1e3).toFixed(2)} KB`;
-  return `${bytes} bytes`;
-}
-
-function getPackageNameAndVersion(input) {
+function getPackageNameAndVersion(input: string) {
   const scoped = input.startsWith("@");
   let [packageName, version] = input.split("@");
   if (scoped) {
@@ -392,11 +364,14 @@ function getPackageNameAndVersion(input) {
       version = input.slice(atPos + 1);
     }
   }
-  return [packageName, version];
+  return [packageName, version] as [
+    packageName: string,
+    version: string | undefined,
+  ];
 }
 
 // --- Fetching Logic ---
-async function getBasePackageSize(name) {
+async function getBasePackageSize(name: string): Promise<number> {
   const result = await cachedFetch(`${npmRegistryBaseUrl}/${name}/latest`);
   if (!result.isCached) {
     result.commit(result.data);
@@ -576,7 +551,6 @@ function copyMarkdown() {
 
 // --- UI State Helpers ---
 function setLoading(val) {
-  isLoading = val;
   elements.searchBtn.disabled = val;
   elements.searchIcon.classList.toggle("hidden", val);
   elements.loadingIcon.classList.toggle("hidden", !val);
