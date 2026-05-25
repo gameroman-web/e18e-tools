@@ -240,13 +240,19 @@ const description = "e18e tools";
 
 <script>
 import semver from "semver";
-import { cachedFetch, fetchAllStats } from "#lib/api";
-import { liveRegistryUrl, npmRegistryBaseUrl } from "#lib/constants";
+import { getBasePackageSize, getSortedDependents } from "#lib/api";
 import { elements, setLoading, showError, updateProgress } from "#lib/ui";
 import { escapeMdTable, formatDownloads, formatTraffic } from "#lib/util";
 
+interface CurrentResult {
+  name: string;
+  version: string;
+  downloads: number;
+  traffic: number;
+}
+
 // Global State
-let currentResults = [];
+let currentResults: CurrentResult[] = [];
 
 function updateUrlParams({
   pkg,
@@ -257,7 +263,7 @@ function updateUrlParams({
   isDev?: boolean;
   limit?: string;
 }) {
-  const url = new URL(window.location);
+  const url = new URL(window.location.href);
 
   if (pkg === "") {
     url.searchParams.delete("package");
@@ -320,44 +326,6 @@ function getPackageNameAndVersion(input: string) {
   ];
 }
 
-// --- Fetching Logic ---
-async function getBasePackageSize(name: string): Promise<number> {
-  const result = await cachedFetch(`${npmRegistryBaseUrl}/${name}/latest`);
-  if (!result.isCached) {
-    result.commit(result.data);
-  }
-  return result.data.dist?.size || 0;
-}
-
-async function getSortedDependents(packageName: string, isDev?: boolean) {
-  const view = isDev ? "dev-dependencies" : "dependents2";
-  const url = `${liveRegistryUrl}/_design/dependents/_view/${view}?key="${packageName}"`;
-
-  const { data, isCached, commit } = await cachedFetch(url);
-
-  if (isCached) return data;
-
-  updateProgress(30, "Analyzing dependent list...");
-
-  const allNames = data.rows.map((r) => r.id);
-  const allStats = await fetchAllStats(allNames);
-
-  const MAX_DEPENDENTS = 3000;
-
-  const processed = data.rows
-    .map((r) => ({
-      n: r.id,
-      v: r.value?.version || "",
-      d: allStats[r.id] || 0,
-    }))
-    .sort((a, b) => b.d - a.d)
-    .slice(0, MAX_DEPENDENTS);
-
-  commit(processed);
-
-  return processed;
-}
-
 // --- Core Logic ---
 async function startAnalysis() {
   const pkgInput = elements.pkgInput.value.trim();
@@ -394,13 +362,13 @@ async function startAnalysis() {
     updateProgress(100, "Analysis complete");
   } catch (err) {
     console.error(err);
-    showError(err.message);
+    showError((err as Error).message);
   } finally {
     setLoading(false);
   }
 }
 
-function displayResults(data, isDev?: boolean) {
+function displayResults(data: CurrentResult[], isDev?: boolean) {
   elements.resultsTableBody.innerHTML = "";
 
   elements.trafficHeader.classList.toggle("hidden", isDev);
@@ -423,16 +391,16 @@ function displayResults(data, isDev?: boolean) {
       : `<td class="px-6 py-4"><span class="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs">${pkg.version || "any"}</span></td>`;
 
     row.innerHTML = `
-                    <td class="px-6 py-4 text-slate-400 font-medium">${i + 1}</td>
-                    <td class="px-6 py-4 font-bold text-slate-700">${formatDownloads(pkg.downloads)}</td>
-                    ${trafficCell}
-                    ${versionCell}
-                    <td class="px-6 py-4">
-                        <a href="https://npmx.dev/${pkg.name}" target="_blank" class="text-blue-600 hover:underline font-medium">
-                            ${pkg.name}
-                        </a>
-                    </td>
-                  `;
+      <td class="px-6 py-4 text-slate-400 font-medium">${i + 1}</td>
+      <td class="px-6 py-4 font-bold text-slate-700">${formatDownloads(pkg.downloads)}</td>
+      ${trafficCell}
+      ${versionCell}
+      <td class="px-6 py-4">
+        <a href="https://npmx.dev/${pkg.name}" target="_blank" class="text-blue-600 hover:underline font-medium">
+          ${pkg.name}
+        </a>
+      </td>
+    `;
     elements.resultsTableBody.appendChild(row);
   });
 }
