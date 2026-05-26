@@ -255,17 +255,18 @@ import { getPackageNameAndVersion } from "#lib/util";
 // Global State
 let currentResults: AnalysisResult[] = [];
 
-function updateUrlParams({
-  pkg,
-  isDev,
-  limit,
-}: {
-  pkg?: string;
-  isDev?: boolean;
-  limit?: string;
-}) {
-  const url = new URL(window.location.href);
-
+function setUrlParams(
+  url: URL,
+  {
+    pkg,
+    isDev,
+    limit,
+  }: {
+    pkg?: string;
+    isDev?: boolean;
+    limit?: string;
+  },
+) {
   if (pkg === "") {
     url.searchParams.delete("package");
   } else if (pkg) {
@@ -283,7 +284,15 @@ function updateUrlParams({
   } else if (limit) {
     url.searchParams.set("limit", limit);
   }
+}
 
+function updateUrlParams(params: {
+  pkg?: string;
+  isDev?: boolean;
+  limit?: string;
+}) {
+  const url = new URL(window.location.href);
+  setUrlParams(url, params);
   window.history.pushState({}, "", url);
 }
 
@@ -304,11 +313,11 @@ function loadParamsFromUrl() {
   }
 
   if (pkg) {
-    startAnalysis();
+    startAnalysis(true);
   }
 }
 // --- Core Logic ---
-async function startAnalysis() {
+async function startAnalysis(replaceState = false) {
   const pkgInput = elements.pkgInput.value.trim();
   if (!pkgInput) return;
 
@@ -320,7 +329,14 @@ async function startAnalysis() {
     const isDev = elements.devCheckbox.checked;
     const limit = parseInt(elements.limitInput.value, 10) || 200;
 
-    updateUrlParams({ pkg: pkgInput, isDev, limit: limit.toString() });
+    if (replaceState) {
+      const url = new URL(window.location.href);
+      setUrlParams(url, { pkg: pkgInput, isDev, limit: limit.toString() });
+      window.history.replaceState({}, "", url);
+    } else {
+      updateUrlParams({ pkg: pkgInput, isDev, limit: limit.toString() });
+    }
+
     updateProgress(20, "Fetching package metadata...");
     const pkgSize = await getBasePackageSize(pkgName);
     const sortedDeps = await getSortedDependents(pkgName, isDev);
@@ -350,7 +366,7 @@ async function startAnalysis() {
 }
 
 // --- Event Listeners ---
-elements.searchBtn.addEventListener("click", startAnalysis);
+elements.searchBtn.addEventListener("click", () => startAnalysis());
 elements.pkgInput.addEventListener("keypress", (e) => {
   if (e.key === "Enter") startAnalysis();
 });
