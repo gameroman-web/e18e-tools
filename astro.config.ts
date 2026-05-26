@@ -5,4 +5,5 @@ export default defineConfig({
   output: "static",
   build: { format: "preserve" },
   vite: { plugins: [tailwindcss()] },
+  redirects: { "/": "/dependents" },
 });
