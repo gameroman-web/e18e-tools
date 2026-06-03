@@ -345,7 +345,13 @@ async function startAnalysis(replaceState = false) {
     currentResults = sortedDeps
       .filter((d) => {
         if (!requestedRange) return true;
-        return semver.intersects(d.v, requestedRange);
+        if (d.v === requestedRange) return true;
+        if (d.v === "*" || requestedRange === "*") return true;
+        try {
+          return semver.intersects(d.v, requestedRange);
+        } catch {
+          return false;
+        }
       })
       .map((d) => ({
         name: d.n,

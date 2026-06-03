@@ -136,7 +136,7 @@ async function getSortedDependents(
   const processed = data.rows
     .map((r) => ({
       n: r.id,
-      v: r.value?.version || "",
+      v: r.value?.version?.trim() || "",
       d: allStats[r.id] || 0,
     }))
     .sort((a, b) => b.d - a.d)

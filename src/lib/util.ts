@@ -39,7 +39,7 @@ function getPackageNameAndVersion(input: string) {
       version = input.slice(atPos + 1);
     }
   }
-  return [packageName, version] as [
+  return [packageName, version?.trim()] as [
     packageName: string,
     version: string | undefined,
   ];
