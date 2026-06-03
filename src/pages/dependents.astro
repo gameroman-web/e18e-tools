@@ -345,7 +345,7 @@ async function startAnalysis(replaceState = false) {
     currentResults = sortedDeps
       .filter((d) => {
         if (!requestedRange) return true;
-        return semver.satisfies(d.v, requestedRange);
+        return semver.intersects(d.v, requestedRange);
       })
       .map((d) => ({
         name: d.n,
