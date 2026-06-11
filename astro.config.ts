@@ -3,7 +3,6 @@ import { defineConfig } from "astro/config";
 
 export default defineConfig({
   output: "static",
-  build: { format: "preserve" },
   vite: { plugins: [tailwindcss()] },
-  redirects: { "/": "/dependents" },
+  redirects: { "/dependents": "https://dependents.dev" },
 });
