@@ -4,5 +4,4 @@ import { defineConfig } from "astro/config";
 export default defineConfig({
   output: "static",
   vite: { plugins: [tailwindcss()] },
-  redirects: { "/dependents": "https://dependents.dev" },
 });
