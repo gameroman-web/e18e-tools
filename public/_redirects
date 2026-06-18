@@ -1,2 +1,1 @@
 /dependents/* https://dependents.dev/:splat  301
-/dependents?* https://dependents.dev/?:splat 301
